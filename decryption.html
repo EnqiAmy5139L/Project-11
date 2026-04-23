@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>loading... probably</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=DM+Mono:ital@0;1&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #04091a;
+            --cream: #f0e2c4;
+            --amber: #00c8ff;
+            --muted: rgba(240,226,196,0.35);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            font-family: 'DM Mono', monospace;
+            color: var(--cream);
+            overflow: hidden; cursor: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #dot { position:fixed; width:10px; height:10px; border-radius:50%; background:#00c8ff; pointer-events:none; z-index:99999; margin-left:-5px; margin-top:-5px; }
+        
+        
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: radial-gradient(circle, rgba(0,200,255,0.03) 1px, transparent 1px);
+            background-size: 28px 28px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .wrap {
+            z-index: 10; display: flex; flex-direction: column;
+            align-items: center; gap: 0;
+        }
+
+        .cat-zone {
+            position: relative;
+            width: 130px; height: 130px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 24px;
+        }
+        .cat-ring {
+            position: absolute; inset: -14px;
+            border-radius: 50%;
+            border: 1px dashed rgba(0,200,255,0.3);
+            animation: spin 10s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .cat-img {
+            width: 100px; height: auto;
+            filter: drop-shadow(0 0 20px rgba(0,200,255,0.28));
+        }
+
+        #status {
+            font-family: 'Caveat', cursive;
+            font-size: 1.25rem; color: var(--cream);
+            min-height: 28px; margin-bottom: 22px;
+            text-align: center;
+        }
+
+        .bar-wrap {
+            width: 260px; height: 2px;
+            background: rgba(240,226,196,0.08);
+            margin-bottom: 8px;
+            position: relative;
+        }
+        #bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--amber), #66e0ff);
+            box-shadow: 0 0 12px rgba(0,200,255,0.4);
+            transition: width 0.1s linear;
+        }
+        #pct {
+            font-size: 0.65rem; color: var(--muted);
+            text-align: center; margin-bottom: 24px;
+        }
+
+        .logs {
+            font-size: 0.6rem; width: 260px;
+            color: rgba(0,200,255,0.45);
+            line-height: 2; text-align: left;
+            min-height: 80px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+<div id="dot"></div>
+
+
+<div class="wrap">
+    <div class="cat-zone">
+        <div class="cat-ring"></div>
+        <img src="https://i.ibb.co/nq8RCtBK/Screenshot-2026-02-08-115048.png" class="cat-img" id="catimg">
+    </div>
+
+    <div id="status">getting things ready...</div>
+    <div class="bar-wrap"><div id="bar"></div></div>
+    <div id="pct">0%</div>
+    <div class="logs" id="log"></div>
+</div>
+
+<script>
+    const dot=document.getElementById('dot');
+    let mx=innerWidth/2,my=innerHeight/2;
+    document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px';});
+
+    gsap.fromTo('.wrap',{opacity:0,y:16},{opacity:1,y:0,duration:0.9,ease:'power2.out'});
+
+    const status  = document.getElementById('status');
+    const bar     = document.getElementById('bar');
+    const pct     = document.getElementById('pct');
+    const logEl   = document.getElementById('log');
+    const cat     = document.getElementById('catimg');
+
+    const msgs = [
+        [12, 'curling a cat...'],
+        [28, 'cooking pav bhaji...'],
+        [46, 'setting weather to rainy...'],
+        [68, 'loading memories...'],
+        [88, 'almost there :)'],
+    ];
+    const logLines = [
+        '> ok starting i guess',
+        '> curling cat........... ✓',
+        '> making pav bhaji...... ✓',
+        '> weather adjusted...... ✓',
+        '> memories loaded....... ✓',
+        '> done!! :)',
+    ];
+    const logTrgs = [8,25,44,65,86,98];
+    const shown = {};
+    let logIdx = 0;
+
+    function addLog(){
+        if(logIdx>=logLines.length)return;
+        const d=document.createElement('div');
+        d.style.opacity='0';d.textContent=logLines[logIdx++];
+        logEl.appendChild(d);
+        gsap.to(d,{opacity:1,duration:0.4});
+    }
+
+    let p=0;
+    const iv=setInterval(()=>{
+        p++;
+        bar.style.width=p+'%';
+        pct.textContent=p+'%';
+
+        msgs.forEach(([at,msg])=>{
+            if(p===at){
+                gsap.to(status,{opacity:0,y:-6,duration:0.18,onComplete:()=>{
+                    status.textContent=msg;
+                    gsap.to(status,{opacity:1,y:0,duration:0.28});
+                }});
+                gsap.to(cat,{
+                    scale:1+p/180,
+                    filter:`drop-shadow(0 0 ${18+p/4}px rgba(0,200,255,${0.25+p/400}))`,
+                    duration:0.5
+                });
+            }
+        });
+
+        logTrgs.forEach(t=>{
+            if(p>=t&&!shown[t]){shown[t]=true;addLog();}
+        });
+
+        if(p>=100){
+            clearInterval(iv);
+            status.textContent='ok less go :)';
+            gsap.to(status,{color:'#a8d8a8',duration:0.5});
+            gsap.to(bar,{background:'#a8d8a8',boxShadow:'0 0 16px rgba(168,216,168,0.4)',duration:0.5});
+            setTimeout(()=>{
+                gsap.to('.wrap',{opacity:0,scale:1.04,duration:0.6,onComplete:()=>{
+                    window.location.href='countdown.html';
+                }});
+            },1600);
+        }
+    },60);
+</script>
+</body>
+</html>

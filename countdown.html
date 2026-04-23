@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ready?</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #04091a;
+            --cream: #f0e2c4;
+            --amber: #00c8ff;
+            --rose:  #bf6475;
+            --danger:#d94f4f;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            font-family: 'Playfair Display', serif;
+            color: var(--cream);
+            overflow: hidden; cursor: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #dot { position:fixed; width:10px; height:10px; border-radius:50%; background:#00c8ff; pointer-events:none; z-index:99999; margin-left:-5px; margin-top:-5px; }
+        
+        
+
+        /* wallpaper background */
+        .bg {
+            position: fixed; inset: 0; z-index: 0;
+            background: url('https://i.ibb.co/PGBcX2ZC/wp10529898-birthday-anime-wallpapers.png') no-repeat center/cover;
+            filter: brightness(12%) blur(3px) saturate(0.5);
+        }
+        .vignette {
+            position: fixed; inset: 0; z-index: 1;
+            background: radial-gradient(ellipse at center, transparent 35%, rgba(4,9,26,0.96) 100%);
+        }
+
+        /* warm bg accent */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -30%; left: -20%;
+            width: 70%; height: 70%;
+            background: radial-gradient(circle, rgba(0,200,255,0.04) 0%, transparent 70%);
+            pointer-events: none; z-index: 2;
+        }
+
+        .container { text-align: center; z-index: 10; position: relative; }
+
+        #ui { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .small-tag {
+            font-family: 'Caveat', cursive;
+            font-size: 1rem; color: rgba(240,226,196,0.45);
+        }
+        h2 {
+            font-size: clamp(1.5rem, 3.5vw, 2.4rem);
+            font-weight: 400; font-style: italic;
+            color: var(--cream); line-height: 1.25;
+        }
+
+        .reveal-btn {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 1.05rem;
+            padding: 13px 46px;
+            background: transparent;
+            border: 1.5px solid rgba(0,200,255,0.5);
+            color: var(--amber); cursor: none;
+            border-radius: 2px;
+            transition: background 0.25s, color 0.25s;
+        }
+        .reveal-btn:hover { background: var(--amber); color: var(--bg); }
+
+        /* timer ring */
+        #ring-wrap {
+            display: none;
+            position: relative;
+            width: 230px; height: 230px;
+            margin: 0 auto 16px;
+        }
+        #ring-wrap svg { position: absolute; inset: 0; }
+        #timer-inner {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        #timer {
+            display: none;
+            font-size: clamp(5rem, 18vw, 10rem);
+            font-weight: 700; line-height: 1;
+            color: var(--cream);
+        }
+        #timer.danger { color: var(--danger); }
+
+        #timer-label {
+            display: none;
+            font-family: 'Caveat', cursive;
+            font-size: 1rem; color: rgba(240,226,196,0.35);
+            margin-top: 6px;
+        }
+
+        #prank {
+            display: none; opacity: 0;
+            font-family: 'Caveat', cursive;
+            font-size: clamp(2.2rem, 7vw, 4rem);
+            font-weight: 600; color: var(--cream);
+        }
+    </style>
+</head>
+<body>
+<div id="dot"></div>
+
+<div class="bg"></div>
+<div class="vignette"></div>
+
+<div class="container">
+    <div id="ui">
+        <p class="small-tag">almost there :)</p>
+        <h2>Ready to see the surprise?</h2>
+        <button class="reveal-btn" onclick="start()">✦ Show me ✦</button>
+    </div>
+
+    <div id="ring-wrap">
+        <svg viewBox="0 0 230 230" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="115" cy="115" r="100" fill="none" stroke="rgba(240,226,196,0.07)" stroke-width="2"/>
+            <circle id="ring" cx="115" cy="115" r="100" fill="none"
+                stroke="var(--amber)" stroke-width="2" stroke-linecap="round"
+                stroke-dasharray="628.3" stroke-dashoffset="0"
+                transform="rotate(-90 115 115)"/>
+        </svg>
+        <div class="timer-inner">
+            <div id="timer"></div>
+        </div>
+    </div>
+    <div id="timer-label">seconds</div>
+    <div id="prank">JUST KIDDING!! :P</div>
+</div>
+
+<script>
+    const dot=document.getElementById('dot');
+    let mx=innerWidth/2,my=innerHeight/2;
+    document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px';});
+
+    gsap.from('#ui',{opacity:0,y:24,duration:1,ease:'power2.out',delay:0.3});
+
+    function start(){
+        const ui=document.getElementById('ui');
+        const rw=document.getElementById('ring-wrap');
+        const timer=document.getElementById('timer');
+        const tl=document.getElementById('timer-label');
+        const ring=document.getElementById('ring');
+        const C=628.3;
+
+        gsap.to(ui,{opacity:0,scale:0.92,duration:0.45,onComplete:()=>{
+            ui.style.display='none';
+            rw.style.display='block';
+            tl.style.display='block';
+            timer.style.display='block';
+            timer.textContent='10';
+            gsap.from(rw,{scale:0.75,opacity:0,duration:0.6,ease:'back.out(2)'});
+            gsap.from(tl,{opacity:0,duration:0.5,delay:0.3});
+        }});
+
+        let left=10;
+        const iv=setInterval(()=>{
+            left--;
+            gsap.to(timer,{scale:1.12,duration:0.08,yoyo:true,repeat:1});
+            timer.textContent=left;
+
+            const offset=C*(left/10);
+            gsap.to(ring,{strokeDashoffset:C-offset,duration:0.75,ease:'power1.out'});
+
+            if(left<=3){
+                timer.classList.add('danger');
+                gsap.to(ring,{stroke:'var(--danger)',duration:0.3});
+            }
+
+            if(left===0){
+                clearInterval(iv);
+                gsap.to(rw,{opacity:0,scale:0.85,duration:0.45});
+                gsap.to(tl,{opacity:0,duration:0.3});
+
+                const pr=document.getElementById('prank');
+                pr.style.display='block';
+                gsap.fromTo(pr,{opacity:0,y:18},{opacity:1,y:0,duration:0.9,ease:'power2.out',delay:0.25});
+
+                setTimeout(()=>{
+                    alert("Not so soon baka! \n\nSomeone needs to complete some tasks first :).");
+                    window.location.href='task.html';
+                },2000);
+            }
+        },1000);
+    }
+</script>
+</body>
+</html>

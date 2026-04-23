@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>trace the stars</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --amber: #00c8ff;
+            --rose:  #bf6475;
+            --cream: #f0e2c4;
+            --deep:  #02070f;
+            --gold:  #d4a843;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background: var(--deep);
+            color: var(--cream);
+            overflow: hidden; cursor: none;
+            touch-action: none;
+            font-family: 'Lora', serif;
+        }
+
+        /* improved crosshair cursor */
+        #cur {
+            position: fixed; pointer-events: none; z-index: 999;
+            will-change: transform;
+        }
+        #cring {
+            position: fixed; width: 36px; height: 36px;
+            border-radius: 50%; border: 1px solid rgba(0,200,255,0.3);
+            pointer-events: none; z-index: 998;
+            margin-left: -18px; margin-top: -18px;
+        }
+
+        #bg-c { position: fixed; inset: 0; z-index: 1; }
+        #main-c { position: fixed; inset: 0; z-index: 10; }
+
+        .hud {
+            position: fixed; inset: 0; z-index: 50;
+            pointer-events: none;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+            padding: 28px 36px;
+        }
+        .hud-top {
+            display: flex; justify-content: flex-end;
+            font-family: 'Caveat', cursive;
+            font-size: 0.95rem;
+            color: rgba(0,200,255,0.55);
+        }
+        .hud-mid {
+            text-align: center;
+            font-style: italic; font-size: 1.1rem;
+            color: rgba(240,226,196,0.5);
+            pointer-events: none;
+        }
+        .hud-bot {
+            text-align: center;
+            font-family: 'Caveat', cursive;
+            font-size: 0.85rem;
+            color: rgba(240,226,196,0.25);
+        }
+
+        /* reveal panel */
+        #reveal {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            z-index: 200;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-end;
+            padding-bottom: 48px; gap: 10px;
+            pointer-events: none;
+            background: linear-gradient(to bottom, transparent 0%, rgba(2,7,15,0.92) 20%, rgba(2,7,15,0.98) 100%);
+            height: 60%;
+        }
+        #reveal.on { pointer-events: auto; }
+
+        .rv-svg { width: 220px; height: 110px; opacity: 0; }
+        .rv-title {
+            font-style: italic; font-weight: 400;
+            font-size: 2.4rem; color: var(--gold);
+            opacity: 0;
+        }
+        .rv-sub {
+            font-family: 'Caveat', cursive;
+            font-size: 0.95rem; color: rgba(240,226,196,0.35);
+            opacity: 0;
+        }
+        .rv-desc {
+            font-style: italic; font-size: 0.88rem;
+            line-height: 2; color: rgba(240,226,196,0.55);
+            text-align: center; max-width: 460px;
+            opacity: 0;
+        }
+        .rv-desc em {
+            font-style: normal;
+            font-size: 0.76rem; opacity: 0.5;
+            display: block; margin-top: 8px;
+            font-family: 'Caveat', cursive;
+            letter-spacing: 0.04em;
+        }
+        .rv-btn {
+            margin-top: 8px; padding: 10px 34px;
+            background: transparent;
+            border: 1.5px solid rgba(212,168,67,0.45);
+            color: var(--gold); font-family: 'Lora', serif;
+            font-style: italic; font-size: 0.95rem;
+            cursor: pointer; border-radius: 2px;
+            transition: background 0.22s, color 0.22s;
+            opacity: 0;
+        }
+        .rv-btn:hover { background: var(--gold); color: var(--deep); }
+    </style>
+</head>
+<body>
+
+<div id="cur">
+    <svg width="30" height="30" viewBox="0 0 30 30">
+        <circle cx="15" cy="15" r="1.8" fill="rgba(0,200,255,0.85)"/>
+        <line x1="15" y1="3" x2="15" y2="10" stroke="rgba(0,200,255,0.4)" stroke-width="1.2"/>
+        <line x1="15" y1="20" x2="15" y2="27" stroke="rgba(0,200,255,0.4)" stroke-width="1.2"/>
+        <line x1="3"  y1="15" x2="10" y2="15" stroke="rgba(0,200,255,0.4)" stroke-width="1.2"/>
+        <line x1="20" y1="15" x2="27" y2="15" stroke="rgba(0,200,255,0.4)" stroke-width="1.2"/>
+    </svg>
+</div>
+<div id="cring"></div>
+
+<canvas id="bg-c"></canvas>
+<canvas id="main-c"></canvas>
+
+<div class="hud">
+    <div class="hud-top"><span id="counter">0 / 5 stars</span></div>
+    <div class="hud-mid">trace the path through the stars</div>
+    <div class="hud-bot">hover near ① to begin &nbsp;·&nbsp; click to reset</div>
+</div>
+
+<div id="reveal">
+    <svg class="rv-svg" viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="glow"><feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="lglow"><feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <g filter="url(#lglow)" stroke="#d4a843" stroke-width="1" stroke-opacity="0.6" fill="none">
+            <line x1="22" y1="42" x2="66" y2="78"/>
+            <line x1="66" y1="78" x2="110" y2="24"/>
+            <line x1="110" y1="24" x2="154" y2="78"/>
+            <line x1="154" y1="78" x2="198" y2="42"/>
+        </g>
+        <g filter="url(#glow)" fill="#bf6475">
+            <circle cx="22" cy="42" r="3.5"/>
+            <circle cx="66" cy="78" r="3.5"/>
+            <circle cx="110" cy="24" r="4"/>
+            <circle cx="154" cy="78" r="3.5"/>
+            <circle cx="198" cy="42" r="3.5"/>
+        </g>
+        <g font-family="Lora, serif" font-size="6.5" font-style="italic" fill="rgba(212,168,67,0.55)" text-anchor="middle">
+            <text x="22" y="33">Caph</text>
+            <text x="66" y="92">Schedar</text>
+            <text x="110" y="14">γ Cas</text>
+            <text x="154" y="92">Ruchbah</text>
+            <text x="198" y="33">Segin</text>
+        </g>
+    </svg>
+    <div class="rv-title">Cassiopeia</div>
+    <div class="rv-sub">queen of the sky · northern hemisphere · forever circling</div>
+    <div class="rv-desc">
+        They say some people are so luminous<br>
+        the universe had no choice but to write them into the stars.<br>
+        A queen — radiant, impossible to overlook,<br>
+        circling the north pole through every season, never once dimming.<br>
+        <em>Some queens don't need a crown to be recognized.</em>
+    </div>
+    <button class="rv-btn" onclick="window.location.href='message.html'">continue →</button>
+</div>
+
+<script>
+/* background twinkling stars */
+const bgC = document.getElementById('bg-c');
+const bgX = bgC.getContext('2d');
+let bgs = [];
+function initBg(){
+    bgC.width=innerWidth; bgC.height=innerHeight;
+    bgs=Array.from({length:200},()=>({
+        x:Math.random()*bgC.width, y:Math.random()*bgC.height,
+        r:Math.random()*0.9+0.2,
+        a:Math.random()*0.5+0.1,
+        ph:Math.random()*Math.PI*2,
+        sp:Math.random()*0.006+0.002
+    }));
+}
+function renderBg(){
+    bgX.clearRect(0,0,bgC.width,bgC.height);
+    bgs.forEach(s=>{
+        s.ph+=s.sp;
+        const a=s.a*(0.55+0.45*Math.sin(s.ph));
+        bgX.beginPath();bgX.arc(s.x,s.y,s.r,0,Math.PI*2);
+        bgX.fillStyle=`rgba(255,255,255,${a.toFixed(3)})`;bgX.fill();
+    });
+    requestAnimationFrame(renderBg);
+}
+
+/* improved cursor */
+const cring=document.getElementById('cring');
+let crx=innerWidth/2,cry=innerHeight/2;
+document.addEventListener('mousemove',e=>{
+    crx+=(e.clientX-crx)*0.12;cry+=(e.clientY-cry)*0.12;
+    cring.style.left=crx+'px';cring.style.top=cry+'px';
+});
+(function cringAnim(){
+    requestAnimationFrame(cringAnim);
+})();
+
+/* main canvas */
+const canvas=document.getElementById('main-c');
+const ctx=canvas.getContext('2d');
+let W,H,stars=[],conn=[],mx=-999,my=-999,done=false,animId=null;
+
+const TPL=[
+    {fx:0.20,fy:0.40,name:'Caph',   num:'①'},
+    {fx:0.35,fy:0.62,name:'Schedar',num:'②'},
+    {fx:0.50,fy:0.30,name:'γ Cas',  num:'③'},
+    {fx:0.65,fy:0.62,name:'Ruchbah',num:'④'},
+    {fx:0.80,fy:0.40,name:'Segin',  num:'⑤'},
+];
+function initMain(){
+    W=canvas.width=innerWidth; H=canvas.height=innerHeight;
+    stars=TPL.map(t=>({x:t.fx*W,y:t.fy*H,name:t.name,num:t.num,r:3.5,pulse:Math.random()*Math.PI*2}));
+}
+
+function renderMain(){
+    animId=requestAnimationFrame(renderMain);
+    ctx.clearRect(0,0,W,H);
+    const t=performance.now()*0.001;
+
+    if(conn.length>0){
+        ctx.save();
+        ctx.shadowBlur=14; ctx.shadowColor='rgba(212,168,67,0.7)';
+        ctx.strokeStyle='rgba(212,168,67,0.65)'; ctx.lineWidth=1.4;
+        ctx.beginPath();
+        conn.forEach((idx,i)=>{const s=stars[idx];i===0?ctx.moveTo(s.x,s.y):ctx.lineTo(s.x,s.y);});
+        if(conn.length<stars.length) ctx.lineTo(mx,my);
+        ctx.stroke(); ctx.restore();
+    }
+
+    stars.forEach((s,i)=>{
+        s.pulse+=0.02;
+        const isDone=conn.includes(i);
+        const isNext=!isDone&&conn.length===i;
+        const pulse=s.r+Math.sin(s.pulse)*(isNext?2.2:0.9);
+
+        if(isNext){
+            const hr=pulse+11+Math.sin(t*2.2)*3;
+            const ha=0.1+0.07*Math.sin(t*2.2);
+            ctx.beginPath();ctx.arc(s.x,s.y,hr,0,Math.PI*2);
+            ctx.strokeStyle=`rgba(212,168,67,${ha})`;ctx.lineWidth=1.2;ctx.stroke();
+            ctx.beginPath();ctx.arc(s.x,s.y,hr+7,0,Math.PI*2);
+            ctx.strokeStyle=`rgba(212,168,67,${ha*0.35})`;ctx.lineWidth=0.5;ctx.stroke();
+        }
+
+        ctx.beginPath();ctx.arc(s.x,s.y,pulse,0,Math.PI*2);
+        ctx.shadowBlur=isDone?26:(isNext?20:9);
+        ctx.shadowColor=isDone?'#bf6475':(isNext?'#d4a843':'rgba(240,226,196,0.6)');
+        ctx.fillStyle=isDone?'#bf6475':(isNext?'#d4a843':'rgba(240,226,196,0.85)');
+        ctx.fill();
+
+        if(isDone){
+            ctx.save();ctx.strokeStyle='rgba(191,100,117,0.3)';ctx.lineWidth=0.7;
+            ctx.beginPath();ctx.moveTo(s.x-9,s.y);ctx.lineTo(s.x+9,s.y);
+            ctx.moveTo(s.x,s.y-9);ctx.lineTo(s.x,s.y+9);ctx.stroke();ctx.restore();
+        }
+
+        ctx.save();ctx.font='700 10px Lora, serif';ctx.textAlign='center';ctx.shadowBlur=0;
+        ctx.fillStyle=isDone?'rgba(191,100,117,0.55)':(isNext?'rgba(212,168,67,0.9)':'rgba(240,226,196,0.22)');
+        ctx.fillText(s.num,s.x,s.y-18);ctx.restore();
+    });
+}
+
+function handleMove(e){
+    const cx=e.touches?e.touches[0].clientX:e.clientX;
+    const cy=e.touches?e.touches[0].clientY:e.clientY;
+    mx=cx; my=cy;
+    gsap.to('#cur',{x:cx-15,y:cy-15,duration:0.07,ease:'none'});
+    crx+=(cx-crx)*0.12; cry+=(cy-cry)*0.12;
+    cring.style.left=crx+'px'; cring.style.top=cry+'px';
+    if(done) return;
+    const next=conn.length;
+    if(next>=stars.length) return;
+    const s=stars[next];
+    if(Math.hypot(s.x-mx,s.y-my)<42){
+        conn.push(next);
+        document.getElementById('counter').textContent=`${conn.length} / ${stars.length} stars`;
+        if(navigator.vibrate) navigator.vibrate(12);
+        if(conn.length===stars.length){ done=true; gsap.delayedCall(0.5,reveal); }
+    }
+}
+
+function handleClick(){
+    if(done) return;
+    conn=[];
+    document.getElementById('counter').textContent=`0 / ${stars.length} stars`;
+}
+
+window.addEventListener('mousemove',handleMove);
+window.addEventListener('touchmove',handleMove,{passive:true});
+window.addEventListener('touchstart',handleMove,{passive:true});
+window.addEventListener('mousedown',handleClick);
+
+function reveal(){
+    cancelAnimationFrame(animId);
+    drawFrozen();
+    gsap.to('.hud',{opacity:0,duration:0.5});
+    const panel=document.getElementById('reveal');
+    panel.classList.add('on');
+    gsap.set(panel,{y:'100%'});
+    gsap.to(panel,{y:0,duration:0.8,ease:'power3.out',onComplete:showPanelContent});
+}
+
+function showPanelContent(){
+    const tl=gsap.timeline();
+    tl.to('.rv-svg', {opacity:1,duration:0.5,ease:'power2.out'})
+      .to('.rv-title',{opacity:1,duration:0.5},'-=0.2')
+      .to('.rv-sub',  {opacity:1,duration:0.4},'-=0.2')
+      .to('.rv-desc', {opacity:1,duration:0.4},'-=0.15')
+      .to('.rv-btn',  {opacity:1,duration:0.4},'-=0.1');
+}
+
+function drawFrozen(){
+    ctx.clearRect(0,0,W,H);
+    ctx.save();ctx.shadowBlur=16;ctx.shadowColor='rgba(212,168,67,0.7)';
+    ctx.strokeStyle='rgba(212,168,67,0.75)';ctx.lineWidth=1.4;
+    ctx.beginPath();stars.forEach((s,i)=>i===0?ctx.moveTo(s.x,s.y):ctx.lineTo(s.x,s.y));
+    ctx.stroke();ctx.restore();
+    stars.forEach(s=>{
+        ctx.save();ctx.beginPath();ctx.arc(s.x,s.y,s.r+2,0,Math.PI*2);
+        ctx.shadowBlur=24;ctx.shadowColor='#bf6475';ctx.fillStyle='#bf6475';ctx.fill();
+        ctx.strokeStyle='rgba(191,100,117,0.3)';ctx.lineWidth=0.7;
+        ctx.beginPath();ctx.moveTo(s.x-9,s.y);ctx.lineTo(s.x+9,s.y);
+        ctx.moveTo(s.x,s.y-9);ctx.lineTo(s.x,s.y+9);ctx.stroke();ctx.restore();
+    });
+}
+
+window.addEventListener('resize',()=>{ initBg(); if(!done) initMain(); });
+
+gsap.set('#reveal',{y:'100%'});
+
+initBg(); initMain(); renderBg(); renderMain();
+</script>
+</body>
+</html>

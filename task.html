@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>find the pairs, sanchi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #04091a;
+            --cream: #f0e2c4;
+            --amber: #00c8ff;
+            --rose:  #bf6475;
+            --sage:  #7aaa8f;
+            --dim: rgba(240,226,196,0.3);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            font-family: 'Lora', serif;
+            color: var(--cream);
+            overflow: hidden; cursor: none;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        #dot { position:fixed; width:10px; height:10px; border-radius:50%; background:#00c8ff; pointer-events:none; z-index:99999; margin-left:-5px; margin-top:-5px; }
+        
+        
+
+        body::before {
+            content: '';
+            position: fixed; top: -20%; right: -10%;
+            width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(122,170,143,0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .bg {
+            position: fixed; inset: 0; z-index: 0;
+            background: url('https://i.ibb.co/N64L2jm1/img3-wallspic-com-your-name-mitsuha-miyamizu-taki-tachibana-poster-anime-art-7680x4320.jpg') no-repeat center/cover;
+            filter: brightness(8%) blur(4px) saturate(0.4);
+        }
+
+        .wrap {
+            z-index: 10; display: flex; flex-direction: column;
+            align-items: center; gap: 12px;
+        }
+
+        .heading { text-align: center; margin-bottom: 4px; }
+        .heading p {
+            font-family: 'Caveat', cursive;
+            font-size: 0.9rem; color: var(--sage); margin-bottom: 2px;
+        }
+        h2 {
+            font-family: 'Caveat', cursive;
+            font-size: 1.7rem; font-weight: 600;
+            color: var(--cream);
+        }
+
+        .stats {
+            display: flex; gap: 28px;
+            font-family: 'Caveat', cursive;
+            font-size: 1rem; color: var(--dim);
+        }
+        .stats b { color: var(--amber); font-weight: 600; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            gap: 8px;
+        }
+
+        .card { width: 70px; height: 94px; perspective: 600px; cursor: none; }
+        .inner {
+            width: 100%; height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.42s cubic-bezier(0.4,0,0.2,1);
+            position: relative;
+        }
+        .card.flipped .inner { transform: rotateY(180deg); }
+        .front, .back {
+            position: absolute; inset: 0;
+            backface-visibility: hidden;
+            display: flex; justify-content: center; align-items: center;
+            border-radius: 6px;
+        }
+        .back {
+            background: rgba(240,226,196,0.04);
+            border: 1px solid rgba(240,226,196,0.1);
+            font-size: 1.1rem; color: rgba(240,226,196,0.12);
+        }
+        .front {
+            background: rgba(0,200,255,0.06);
+            border: 1px solid rgba(0,200,255,0.22);
+            font-size: 1.75rem;
+            transform: rotateY(180deg);
+        }
+        .card.matched .front {
+            border-color: rgba(122,170,143,0.6);
+            background: rgba(122,170,143,0.08);
+            box-shadow: 0 0 14px rgba(122,170,143,0.2);
+        }
+
+        .bar-wrap {
+            width: 296px; height: 2px;
+            background: rgba(240,226,196,0.06);
+        }
+        #pfill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--sage), var(--amber));
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+<div id="dot"></div>
+
+<div class="bg"></div>
+
+<div class="wrap" id="wrap">
+    <div class="heading">
+        <p>memory — find the 8 pairs</p>
+        <h2>go Sanchi go 📢</h2>
+    </div>
+
+    <div class="stats">
+        <span>pairs &nbsp;<b id="mc">0</b>/8</span>
+        <span>moves &nbsp;<b id="mv">0</b></span>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="bar-wrap"><div id="pfill"></div></div>
+</div>
+
+<script>
+    const dot=document.getElementById('dot');
+    let mx=innerWidth/2,my=innerHeight/2;
+    document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px';});
+
+    const items=['🐈','🎮','🌧️','💻','🥯','🏀','👘','🥭'];
+    let deck=[...items,...items].sort(()=>Math.random()-.5);
+    const grid=document.getElementById('grid');
+    let flipped=[],matched=0,moves=0,locked=false;
+
+    deck.forEach((v,i)=>{
+        const c=document.createElement('div');
+        c.className='card';
+        c.innerHTML=`<div class="inner"><div class="back">✦</div><div class="front">${v}</div></div>`;
+        c.dataset.v=v;
+        c.onclick=()=>flip(c);
+        grid.appendChild(c);
+        gsap.from(c,{opacity:0,scale:0.55,rotation:8,duration:0.38,delay:i*0.04,ease:'back.out(2)'});
+    });
+
+    function flip(c){
+        if(locked||flipped.length>=2||c.classList.contains('flipped')||c.classList.contains('matched'))return;
+        c.classList.add('flipped');
+        flipped.push(c);
+        if(flipped.length===2){
+            moves++;
+            document.getElementById('mv').textContent=moves;
+            locked=true;
+            setTimeout(check,680);
+        }
+    }
+
+    function check(){
+        const [a,b]=flipped;
+        if(a.dataset.v===b.dataset.v){
+            a.classList.add('matched');b.classList.add('matched');
+            matched++;
+            document.getElementById('mc').textContent=matched;
+            document.getElementById('pfill').style.width=(matched/8*100)+'%';
+            if(matched===8){
+                setTimeout(()=>{
+                    gsap.to('#wrap',{opacity:0,scale:1.04,duration:0.55,onComplete:()=>{
+                        alert("Good Job Girl \n\nLet's move to the next task...");
+                        window.location.href='game.html';
+                    }});
+                },600);
+            }
+        } else {
+            a.classList.remove('flipped');
+            b.classList.remove('flipped');
+        }
+        flipped=[];locked=false;
+    }
+</script>
+</body>
+</html>
